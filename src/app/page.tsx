@@ -1,68 +1,312 @@
-import Image from "next/image";
+
+"use client";
+
+import { useEffect, useState } from "react";
+
+import ChatWindow from "@/components/chat/ChatWindow";
+import ChatInput from "@/components/chat/ChatInput";
+import Sidebar from "@/components/layout/Sidebar";
+import { Header } from "@/components/layout/Header";
+import WorkspaceHome from "@/components/workspace/WorkspaceHome";
+
+import { useTheme } from "@/hooks/useTheme";
+import { useChatHistory } from "@/hooks/useChatHistory";
+import { useDocuments } from "@/hooks/useDocuments";
+import { useChat } from "@/hooks/useChat";
+
+import type { WorkspaceName } from "@/lib/types";
 
 export default function Home() {
+  const { dark, toggleTheme } = useTheme();
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTool, setActiveTool] =
+    useState<WorkspaceName>("Chat");
+
+  const history = useChatHistory();
+
+  const documents = useDocuments({
+    onDocumentChange: (name, text) => {
+      history.updateDocument(name, text);
+    },
+  });
+
+  const { restoreDocument } = documents;
+
+useEffect(() => {
+  if (!history.historyLoaded) return;
+
+  restoreDocument(
+    history.documentName ?? "",
+    history.documentText ?? ""
+  );
+}, [
+  history.historyLoaded,
+  history.activeChatId,
+  history.documentName,
+  history.documentText,
+  restoreDocument,
+]);
+
+  const chat = useChat({
+    messages: history.messages,
+    setMessages: history.setMessages,
+    activeChatId: history.activeChatId,
+    setActiveChatId: history.setActiveChatId,
+    documentText: documents.docText,
+    documentName: documents.docName,
+    saveConversation: history.saveConversation,
+    workspace: activeTool,
+  });
+
+  function closeSidebar() {
+    setSidebarOpen(false);
+  }
+
+  function toggleSidebar() {
+    setSidebarOpen((previous) => !previous);
+  }
+
+  function navigateTo(name: string) {
+    setActiveTool(name as WorkspaceName);
+    chat.setError("");
+    closeSidebar();
+  }
+
+  function newChat() {
+    if (chat.loading) return;
+
+    history.newChat();
+    documents.removeDocument();
+    chat.setError("");
+    setActiveTool("Chat");
+    closeSidebar();
+  }
+
+  function openChat(
+    chatItem: (typeof history.chats)[number]
+  ) {
+    if (chat.loading) return;
+
+    history.openChat(chatItem);
+    setActiveTool("Chat");
+    chat.setError("");
+    closeSidebar();
+  }
+
+  function deleteChat(id: string) {
+    history.deleteChat(id);
+    chat.setError("");
+  }
+
+  function renameChat(id: string, newTitle: string) {
+    history.renameChat(id, newTitle);
+  }
+
+  function removeDocument() {
+    documents.removeDocument();
+    history.updateDocument("", "");
+  }
+
+  function openChatWorkspace(prompt?: string) {
+    setActiveTool("Chat");
+    chat.setError("");
+    closeSidebar();
+
+    if (prompt?.trim()) {
+      void chat.sendMessage(prompt.trim());
+    }
+  }
+
+  const error = chat.error || documents.error;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div
+      className={`flex h-dvh w-full overflow-hidden ${
+        dark
+          ? "bg-black text-[#F5F5F5]"
+          : "bg-[#F5F1E8] text-[#292720]"
+      }`}
+    >
+      {/* Desktop sidebar: always keep the collapsed rail visible */}
+<aside
+  className={`relative z-20 hidden h-full shrink-0 overflow-hidden md:block ${
+    sidebarOpen ? "w-[270px]" : "w-[68px]"
+  }`}
+>
+  <Sidebar
+    open={sidebarOpen}
+    dark={dark}
+    activeTool={activeTool}
+    documentName={documents.docName}
+    chats={history.chats}
+    activeChatId={history.activeChatId}
+    onNewChat={newChat}
+    onNavigate={navigateTo}
+    onSelectChat={openChat}
+    onDeleteChat={deleteChat}
+    onRenameChat={renameChat}
+    onToggleTheme={toggleTheme}
+    onClose={closeSidebar}
+    onToggle={toggleSidebar}
+  />
+</aside>
+
+{/* Mobile drawer: render only when open */}
+{sidebarOpen && (
+  <div className="fixed inset-0 z-50 md:hidden">
+    <button
+      type="button"
+      aria-label="Close sidebar"
+      onClick={closeSidebar}
+      className="absolute inset-0 h-full w-full bg-black/50"
+    />
+
+    <aside className="absolute inset-y-0 left-0 z-10 w-[min(85vw,300px)] overflow-hidden shadow-2xl">
+      <Sidebar
+        open={true}
+        dark={dark}
+        activeTool={activeTool}
+        documentName={documents.docName}
+        chats={history.chats}
+        activeChatId={history.activeChatId}
+        onNewChat={newChat}
+        onNavigate={navigateTo}
+        onSelectChat={openChat}
+        onDeleteChat={deleteChat}
+        onRenameChat={renameChat}
+        onToggleTheme={toggleTheme}
+        onClose={closeSidebar}
+        onToggle={toggleSidebar}
+      />
+    </aside>
+  </div>
+)}
+
+      {/* Main application fills all remaining width */}
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <Header
+          dark={dark}
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={toggleSidebar}
+          onToggleTheme={toggleTheme}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+
+        {activeTool === "Chat" ? (
+          <>
+            {/* Chat messages */}
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+              <ChatWindow
+                messages={history.messages}
+                loading={chat.loading}
+                error={error}
+                dark={dark}
+              />
+            </div>
+
+            {/* Composer stays at bottom */}
+            <ChatInput
+  dark={dark}
+  loading={chat.loading}
+  uploading={documents.uploading}
+  documentName={documents.docName}
+  documentText={documents.docText}
+  onSend={chat.sendMessage}
+  onStop={chat.stopGeneration}
+  onUpload={documents.uploadDocument}
+  onRemoveDocument={removeDocument}
+/>
+          </>
+        ) : (
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+            <WorkspaceHome
+              activeTool={activeTool}
+              dark={dark}
+              documentName={documents.docName}
+              error={error}
+              onOpenChat={openChatWorkspace}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+            {activeTool === "Documents" && (
+              <div className="mx-auto w-full max-w-3xl px-4 pb-8">
+                <div
+                  className={`rounded-2xl border p-5 ${
+                    dark
+                      ? "border-[#303030] bg-[#111111]"
+                      : "border-[#E5DED1] bg-[#FFFCF5]"
+                  }`}
+                >
+                  <h3 className="mb-2 font-semibold">
+                    Upload a document
+                  </h3>
+
+                  <p className="mb-4 text-sm text-[#858585]">
+                    Upload a PDF, DOCX, TXT, or Markdown file to ask
+                    questions about its contents.
+                  </p>
+
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.txt,.md,.markdown"
+                    disabled={documents.uploading}
+                    onChange={async (event) => {
+                      const file = event.target.files?.[0];
+
+                      try {
+                        if (file) {
+                          await documents.uploadDocument(file);
+                        }
+                      } catch (err) {
+                        console.error(err);
+                      } finally {
+                        event.target.value = "";
+                      }
+                    }}
+                    className="block w-full text-sm"
+                  />
+
+                  {documents.uploading && (
+                    <p className="mt-3 text-sm text-blue-500">
+                      Processing document...
+                    </p>
+                  )}
+
+                  {documents.docName && (
+                    <div
+                      className={`mt-4 flex items-center justify-between gap-3 rounded-xl border p-3 ${
+                        dark
+                          ? "border-[#303030]"
+                          : "border-[#E5DED1]"
+                      }`}
+                    >
+                      <span className="truncate text-sm">
+                        {documents.docName}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={removeDocument}
+                        className="shrink-0 rounded-lg px-3 py-1.5 text-sm text-red-500 hover:bg-red-500/10"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+
+                  {documents.docName && (
+                    <button
+                      type="button"
+                      onClick={() => openChatWorkspace()}
+                      className="mt-4 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+                    >
+                      Ask questions about this document
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );
