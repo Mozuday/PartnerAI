@@ -213,7 +213,6 @@ export default function ChatWindow({
                       content={
                         message.content
                       }
-                      dark={dark}
                       sources={
                         message.sources?.map(
                           (source) => ({

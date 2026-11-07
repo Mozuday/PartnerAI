@@ -6,6 +6,8 @@ import {
   Check,
 } from "lucide-react";
 
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
 type ChatSource = {
   title: string;
   url: string;
@@ -16,7 +18,6 @@ type ChatSource = {
 type ChatMessageProps = {
   role: "user" | "assistant";
   content: string;
-  dark: boolean;
   sources?: ChatSource[];
 };
 
@@ -65,7 +66,7 @@ function renderInlineMarkdown(text: string) {
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-600 underline underline-offset-2 hover:text-blue-700 dark:text-blue-400"
+          className="text-primary underline underline-offset-2 hover:text-primary/90 dark:text-primary/90"
         >
           {label}
         </a>
@@ -79,7 +80,7 @@ function renderInlineMarkdown(text: string) {
           href={part}
           target="_blank"
           rel="noopener noreferrer"
-          className="break-all text-blue-600 underline underline-offset-2 hover:text-blue-700 dark:text-blue-400"
+          className="break-all text-primary underline underline-offset-2 hover:text-primary/90 dark:text-primary/90"
         >
           {part}
         </a>
@@ -186,7 +187,6 @@ function renderText(text: string) {
 export default function ChatMessage({
   role,
   content,
-  dark,
   sources = [],
 }: ChatMessageProps) {
   const isUser = role === "user";
@@ -226,29 +226,31 @@ export default function ChatMessage({
 
   return (
     <div
-      className={`flex w-full ${
+      className={`flex w-full gap-3 ${
         isUser
           ? "justify-end"
           : "justify-start"
       }`}
     >
-      {/* User message column */}
+      {!isUser && (
+        <Avatar className="shrink-0 mt-0.5">
+          <AvatarFallback>PA</AvatarFallback>
+        </Avatar>
+      )}
+
       <div
         className={
           isUser
             ? "flex max-w-[90%] flex-col items-end sm:max-w-[80%]"
-            : "w-fit max-w-[90%] sm:max-w-[80%]"
+            : "flex max-w-[90%] flex-col sm:max-w-[80%]"
         }
       >
         {/* Message bubble/content */}
         <div
-          className={
-            isUser
-              ? "w-fit max-w-full break-words rounded-2xl rounded-br-md bg-blue-100 px-4 py-3 text-sm leading-7 text-gray-900 dark:bg-neutral-800 dark:text-gray-100"
-              : dark
-                ? "w-full break-words text-gray-200"
-                : "w-full break-words text-gray-800"
-          }
+          className={`w-fit max-w-full break-words rounded-2xl px-4 py-3 text-sm leading-7 shadow-sm border ${isUser
+            ? "rounded-br-md bg-primary text-primary-foreground border-primary/30"
+            : "rounded-bl-md bg-card text-card-foreground border-border"
+          }`}
         >
           <div
             className={
@@ -284,18 +286,16 @@ export default function ChatMessage({
                 return (
                   <div
                     key={index}
-                    className={`my-4 overflow-hidden rounded-xl border ${
-                      dark
-                        ? "border-neutral-800"
-                        : "border-gray-200"
+                    className={`my-4 overflow-hidden rounded-xl border border-border ${
+                      isUser ? "bg-primary/10" : "bg-muted/30"
                     }`}
                   >
                     {/* Code header */}
                     <div
-                      className={`flex h-9 items-center justify-between border-b px-3 ${
-                        dark
-                          ? "border-neutral-800 bg-neutral-900 text-neutral-400"
-                          : "border-gray-200 bg-gray-100 text-gray-500"
+                      className={`flex h-9 items-center justify-between border-b border-border px-3 ${
+                        isUser
+                          ? "bg-primary/20 text-primary-foreground/70"
+                          : "bg-muted text-muted-foreground"
                       }`}
                     >
                       <span className="text-[11px] font-medium uppercase tracking-wide">
@@ -309,11 +309,7 @@ export default function ChatMessage({
                         }
                         aria-label="Copy code"
                         title="Copy code"
-                        className={`rounded-md p-1.5 transition ${
-                          dark
-                            ? "text-neutral-400 hover:bg-neutral-800 hover:text-white"
-                            : "text-gray-500 hover:bg-gray-200 hover:text-gray-800"
-                        }`}
+                        className="rounded-md p-1.5 transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/40"
                       >
                         <Copy size={14} />
                       </button>
@@ -322,9 +318,7 @@ export default function ChatMessage({
                     {/* Code */}
                     <pre
                       className={`overflow-x-auto p-4 font-mono text-[13px] leading-6 ${
-                        dark
-                          ? "bg-[#0A0A0A] text-gray-200"
-                          : "bg-[#F8F8F8] text-gray-800"
+                        isUser ? "bg-primary/20" : "bg-muted"
                       }`}
                     >
                       <code>{code}</code>
@@ -364,11 +358,7 @@ export default function ChatMessage({
                 ? "Copied"
                 : "Copy message"
             }
-            className={`mt-1 flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-150 ${
-              dark
-                ? "text-neutral-500 hover:bg-neutral-900 hover:text-neutral-200"
-                : "text-gray-400 hover:bg-gray-200 hover:text-gray-700"
-            }`}
+            className="mt-1 flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-150 text-muted-foreground hover:text-foreground hover:bg-muted/40"
           >
             {copied ? (
               <Check size={14} />
@@ -381,13 +371,13 @@ export default function ChatMessage({
         {/* Sources */}
         {!isUser &&
           sources.length > 0 && (
-            <div className="mt-6 w-full border-t border-gray-200 pt-4 dark:border-neutral-800">
+            <div className="mt-6 w-full border-t border-border pt-4">
               <div className="mb-3 flex items-center gap-2">
                 <span className="text-sm font-medium">
                   Sources
                 </span>
 
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-500 dark:bg-neutral-800 dark:text-neutral-400">
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground">
                   {sources.length}
                 </span>
               </div>
@@ -406,23 +396,15 @@ export default function ChatMessage({
                         href={source.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`group block rounded-xl border p-3 transition ${
-                          dark
-                            ? "border-neutral-800 bg-neutral-900/60 hover:border-neutral-700 hover:bg-neutral-900"
-                            : "border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-white"
-                        }`}
+                        className="group block rounded-xl border p-3 transition border-border bg-card hover:border-accent/50"
                       >
                         <div className="flex items-start gap-3">
                           <div
                             className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm ${
                               source.source ===
                               "Website"
-                                ? dark
-                                  ? "bg-blue-950 text-blue-300"
-                                  : "bg-blue-100 text-blue-700"
-                                : dark
-                                  ? "bg-neutral-800 text-neutral-300"
-                                  : "bg-gray-200 text-gray-700"
+                                ? "bg-blue-500/10 text-blue-500"
+                                : "bg-emerald-500/10 text-emerald-500"
                             }`}
                           >
                             {source.source ===
@@ -434,11 +416,7 @@ export default function ChatMessage({
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-3">
                               <p
-                                className={`line-clamp-2 text-sm font-medium ${
-                                  dark
-                                    ? "text-gray-200 group-hover:text-white"
-                                    : "text-gray-800 group-hover:text-black"
-                                }`}
+                                className="line-clamp-2 text-sm font-medium text-card-foreground group-hover:text-primary/90"
                               >
                                 {source.title ||
                                   domain}
@@ -450,22 +428,14 @@ export default function ChatMessage({
                             </div>
 
                             <p
-                              className={`mt-1 truncate text-xs ${
-                                dark
-                                  ? "text-neutral-500"
-                                  : "text-gray-500"
-                              }`}
+                              className="mt-1 truncate text-xs text-muted-foreground"
                             >
                               {domain}
                             </p>
 
                             {source.snippet && (
                               <p
-                                className={`mt-2 line-clamp-2 text-xs leading-5 ${
-                                  dark
-                                    ? "text-neutral-400"
-                                    : "text-gray-600"
-                                }`}
+                                className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground"
                               >
                                 {source.snippet}
                               </p>
@@ -473,11 +443,7 @@ export default function ChatMessage({
 
                             <div className="mt-2">
                               <span
-                                className={`text-[10px] uppercase tracking-wide ${
-                                  dark
-                                    ? "text-neutral-600"
-                                    : "text-gray-400"
-                                }`}
+                                className="text-[10px] uppercase tracking-wide text-muted-foreground"
                               >
                                 {source.source ===
                                 "Website"
@@ -495,6 +461,12 @@ export default function ChatMessage({
             </div>
           )}
       </div>
+
+      {isUser && (
+        <Avatar className="shrink-0 mt-0.5">
+          <AvatarFallback>U</AvatarFallback>
+        </Avatar>
+      )}
     </div>
   );
 }
